@@ -35,6 +35,10 @@ const incidentSchema = new mongoose.Schema(
       trim: true
     },
 
+    image: {
+      type: String // store file path or URL
+    },
+
     reportedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User"
