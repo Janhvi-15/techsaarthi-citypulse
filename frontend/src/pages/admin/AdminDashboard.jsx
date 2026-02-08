@@ -1,153 +1,291 @@
-import { useAuth } from "../../context/AuthContext";
+import React, { useState, useEffect, useMemo } from "react";
+import axios from "axios";
 
-export default function AdminDashboard() {
-  const { user, logout } = useAuth();
+/* =========================
+   🔥 PRIORITY LOGIC
+========================= */
+
+const getDynamicEmergencyLevel = (incident) => {
+  const emergencyMapping = {
+    "Road Damage": 3,
+    "Water Leakage": 4,
+    "Garbage Overflow": 2,
+    "Street Light Issue": 1,
+    "Drainage Problem": 4,
+    "Electricity Issue": 5,
+  };
+
+  let level = emergencyMapping[incident.type] || 1;
+  if (incident.reportsCount > 5) level += 1;
+  return Math.min(level, 5);
+};
+
+const calculatePriority = (incident) => {
+  const reportWeight = Math.min(incident.reportsCount * 5, 50);
+  const emergencyWeight = incident.emergencyLevel * 6;
+  const hoursWaiting =
+    (Date.now() - incident.createdAt.getTime()) / (1000 * 60 * 60);
+  const waitingWeight = Math.min(hoursWaiting, 20);
+
+  return Math.round(reportWeight + emergencyWeight + waitingWeight);
+};
+
+/* =========================
+   🧠 UI HELPERS
+========================= */
+
+const getStatusColor = (status) => {
+  const colors = {
+    Open: "bg-red-100 text-red-800",
+    Pending: "bg-blue-100 text-blue-800",
+    Resolved: "bg-green-100 text-green-800",
+  };
+  return colors[status] || "bg-gray-100 text-gray-800";
+};
+
+const getPriorityBadge = (priority) => {
+  if (priority >= 80) return "bg-red-100 text-red-800";
+  if (priority >= 60) return "bg-orange-100 text-orange-800";
+  if (priority >= 40) return "bg-yellow-100 text-yellow-800";
+  return "bg-green-100 text-green-800";
+};
+
+const getPriorityLabel = (priority) => {
+  if (priority >= 80) return "Critical";
+  if (priority >= 60) return "High";
+  if (priority >= 40) return "Medium";
+  return "Low";
+};
+
+/* =========================
+   🚀 COMPONENT
+========================= */
+
+const IncidentReportsTable = () => {
+  const [incidents, setIncidents] = useState([]);
+  const [staffList, setStaffList] = useState([]);
+  const [selectedIncident, setSelectedIncident] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [assigning, setAssigning] = useState(false);
+
+  const API_BASE = "http://localhost:3000/api/v1";
+
+  useEffect(() => {
+    fetchIncidents();
+  }, []);
+
+  const fetchIncidents = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/incidents`);
+      setIncidents(res.data.data || []);
+    } catch {
+      alert("Failed to load incidents");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* =========================
+     🔥 GROUP LOGIC
+  ========================= */
+
+  const groupedIncidents = useMemo(() => {
+    const map = new Map();
+    const statusRank = { Open: 3, Pending: 2, Resolved: 1 };
+
+    incidents.forEach((incident) => {
+      const key = `${incident.location.latitude}_${incident.location.longitude}_${incident.department}`;
+
+      if (!map.has(key)) {
+        map.set(key, { ...incident, reportsCount: 1 });
+      } else {
+        const existing = map.get(key);
+        existing.reportsCount += 1;
+
+        if (statusRank[incident.status] > statusRank[existing.status]) {
+          existing.status = incident.status;
+        }
+      }
+    });
+
+    return Array.from(map.values())
+      .map((incident) => {
+        const emergencyLevel = getDynamicEmergencyLevel({
+          type: incident.category,
+          reportsCount: incident.reportsCount,
+        });
+
+        return {
+          ...incident,
+          priority: calculatePriority({
+            reportsCount: incident.reportsCount,
+            emergencyLevel,
+            createdAt: new Date(incident.createdAt),
+          }),
+        };
+      })
+      .sort((a, b) => b.priority - a.priority);
+  }, [incidents]);
+
+  /* =========================
+     👷 ASSIGN STAFF
+  ========================= */
+
+const openAssignModal = async (incident) => {
+  setSelectedIncident(incident);
+
+  try {
+    const res = await axios.get(`${API_BASE}/staff`, {
+      params: {
+        workCategory: incident.category,
+        workLocation: incident.location.address // ✅ matches User schema
+      }
+    });
+
+    setStaffList(res.data.data || []);
+  } catch (err) {
+    console.error(err);
+    alert("Failed to fetch staff");
+    setStaffList([]);
+  }
+};
+
+
+
+
+  const assignStaff = async (staffId) => {
+    setAssigning(true);
+    try {
+      await axios.patch(
+        `${API_BASE}/incidents/${selectedIncident._id}/assign`,
+        { staffId }
+      );
+
+      alert("Staff assigned successfully!");
+      setSelectedIncident(null);
+      fetchIncidents();
+    } catch {
+      alert("Assignment failed");
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center mt-20">Loading...</div>;
+  }
+
+  /* =========================
+     📊 TABLE
+  ========================= */
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-rose-100">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-red-500 to-rose-500 p-8 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-4xl font-bold">👑 Admin Dashboard</h1>
-                <p className="text-red-100 mt-2">Welcome, {user?.name}!</p>
-              </div>
-              <button
-                onClick={() => {
-                  logout();
-                  window.location.href = "/";
-                }}
-                className="bg-red-700 hover:bg-red-800 px-6 py-3 rounded-lg font-semibold transition"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <h1 className="text-3xl font-bold mb-6">Incident Reports</h1>
 
-          {/* Profile Info */}
-          <div className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              <div className="bg-red-50 p-6 rounded-xl border-2 border-red-200">
-                <h3 className="text-sm text-gray-600 font-semibold uppercase mb-2">
-                  Name
-                </h3>
-                <p className="text-2xl font-bold text-gray-800">{user?.name}</p>
-              </div>
+      <table className="w-full bg-white shadow rounded-lg">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="p-3 text-left">Issue</th>
+            <th className="p-3">Reports</th>
+            <th className="p-3 text-left">Address</th>
+            <th className="p-3">Status</th>
+            <th className="p-3">Priority</th>
+            <th className="p-3">Action</th>
+          </tr>
+        </thead>
 
-              <div className="bg-red-50 p-6 rounded-xl border-2 border-red-200">
-                <h3 className="text-sm text-gray-600 font-semibold uppercase mb-2">
-                  Email
-                </h3>
-                <p className="text-2xl font-bold text-gray-800">{user?.email}</p>
-              </div>
+        <tbody>
+          {groupedIncidents.map((incident) => (
+            <tr key={incident._id} className="border-t">
+              <td className="p-3">{incident.title}</td>
+              <td className="p-3 text-center">{incident.reportsCount}</td>
+              <td className="p-3 text-sm text-gray-700">
+                    {incident.location.address}
+              </td>
 
-              <div className="bg-red-50 p-6 rounded-xl border-2 border-red-200">
-                <h3 className="text-sm text-gray-600 font-semibold uppercase mb-2">
-                  Role
-                </h3>
-                <p className="text-2xl font-bold text-red-600 uppercase">
-                  {user?.role}
-                </p>
-              </div>
 
-              <div className="bg-red-50 p-6 rounded-xl border-2 border-red-200">
-                <h3 className="text-sm text-gray-600 font-semibold uppercase mb-2">
-                  Access Level
-                </h3>
-                <p className="text-2xl font-bold text-red-600">Full Access</p>
-              </div>
-            </div>
 
-            {/* System Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg">
-                <h3 className="text-3xl font-bold">156</h3>
-                <p className="text-blue-100">Total Incidents</p>
-              </div>
+              <td className="p-3 text-center">
+                <span
+                  className={`px-3 py-1 rounded-full text-xs ${getStatusColor(
+                    incident.status
+                  )}`}
+                >
+                  {incident.status}
+                </span>
+              </td>
+              <td className="p-3 text-center">
+                <span
+                  className={`px-3 py-1 rounded-full text-xs ${getPriorityBadge(
+                    incident.priority
+                  )}`}
+                >
+                  {/* {incident.label incident.priority} */}
+                  {getPriorityLabel(incident.priority)} ({incident.priority})
 
-              <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg">
-                <h3 className="text-3xl font-bold">89</h3>
-                <p className="text-green-100">Resolved</p>
-              </div>
 
-              <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white p-6 rounded-lg">
-                <h3 className="text-3xl font-bold">45</h3>
-                <p className="text-yellow-100">In Progress</p>
-              </div>
+                </span>
+              </td>
+              <td className="p-3 text-center">
+                {incident.status === "Open" && (
+                  <button
+                    onClick={() => openAssignModal(incident)}
+                    className="bg-blue-600 text-white px-4 py-1 rounded"
+                  >
+                    Assign
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-              <div className="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-lg">
-                <h3 className="text-3xl font-bold">22</h3>
-                <p className="text-red-100">Pending</p>
-              </div>
-            </div>
+      {/* =========================
+           🪟 ASSIGN MODAL
+      ========================= */}
+      {selectedIncident && (
+        <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
+          <div className="bg-white w-full max-w-md rounded-lg p-6">
+            <h2 className="text-xl font-bold mb-4">Assign Staff</h2>
 
-            {/* User Management Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg">
-                <h3 className="text-3xl font-bold">542</h3>
-                <p className="text-purple-100">Public Users</p>
-              </div>
+            {staffList.length === 0 ? (
+              <p>No staff available</p>
+            ) : (
+              staffList.map((staff) => (
+                <div
+                  key={staff._id}
+                  className="flex justify-between items-center border p-3 rounded mb-2"
+                >
+                  <div>
+                    <p className="font-semibold">{staff.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {staff.department}
+                    </p>
+                  </div>
+                  <button
+                    disabled={assigning}
+                    onClick={() => assignStaff(staff._id)}
+                    className="bg-green-600 text-white px-3 py-1 rounded"
+                  >
+                    Allot
+                  </button>
+                </div>
+              ))
+            )}
 
-              <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-lg">
-                <h3 className="text-3xl font-bold">28</h3>
-                <p className="text-orange-100">Staff Members</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-pink-500 to-pink-600 text-white p-6 rounded-lg">
-                <h3 className="text-3xl font-bold">3</h3>
-                <p className="text-pink-100">Administrators</p>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white border-2 border-gray-200 rounded-xl p-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                Admin Controls
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg text-center font-semibold hover:shadow-lg transition">
-                  📊 View All Incidents
-                </button>
-
-                <button className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-lg text-center font-semibold hover:shadow-lg transition">
-                  👥 Manage Users
-                </button>
-
-                <button className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg text-center font-semibold hover:shadow-lg transition">
-                  📈 View Analytics
-                </button>
-
-                <button className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-lg text-center font-semibold hover:shadow-lg transition">
-                  📋 Staff Management
-                </button>
-
-                <button className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-6 rounded-lg text-center font-semibold hover:shadow-lg transition">
-                  ⚙️ System Settings
-                </button>
-
-                <button className="bg-gradient-to-r from-gray-500 to-gray-600 text-white p-6 rounded-lg text-center font-semibold hover:shadow-lg transition">
-                  📜 View Logs
-                </button>
-              </div>
-            </div>
-
-            {/* Critical Alerts */}
-            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 mt-8">
-              <h3 className="text-lg font-bold text-red-900 mb-2">
-                🔴 Critical Alerts
-              </h3>
-              <ul className="text-red-800 space-y-2">
-                <li>• 5 incidents pending assignment for more than 48 hours</li>
-                <li>• 2 staff members with overdue task submissions</li>
-                <li>• High incident volume in Downtown District</li>
-              </ul>
-            </div>
+            <button
+              onClick={() => setSelectedIncident(null)}
+              className="mt-4 text-sm text-gray-600"
+            >
+              Cancel
+            </button>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
-}
+};
+
+export default IncidentReportsTable;

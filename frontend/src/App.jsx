@@ -61,16 +61,9 @@ export default function App() {
             }
           />
 
-          {/* ADMIN */}
+          {/* ADMIN - No protection, direct access */}
           <Route path="/admin/login" element={<AdminLogin />} />
-          <Route
-            path="/admin/dashboard"
-            element={
-              <ProtectedRoute role="admin">
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

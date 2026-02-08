@@ -19,11 +19,15 @@ import incidentRouter from "./routes/incident.routes.js";
 import authRouter from "./routes/auth.routes.js";
 import staffAuthRouter from "./routes/staff.auth.routes.js";
 import adminAuthRouter from "./routes/admin.auth.routes.js";
+import staffRoutes from "./routes/staff.routes.js";
+
 
 app.use("/api/v1/incidents", incidentRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/staff/auth", staffAuthRouter);
 app.use("/api/v1/admin/auth", adminAuthRouter);
+app.use("/api/v1/staff", staffRoutes);
+
 
 
 // Health check
