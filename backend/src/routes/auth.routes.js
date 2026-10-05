@@ -1,18 +1,31 @@
-import { Router } from "express";
-import {
-  registerUser,
-  loginUser,
-  getCurrentUser
-} from "../controllers/auth.controllers.js";
-import { verifyJWT } from "../middleware/auth.middleware.js";
+import mongoose from "mongoose";
 
-const router = Router();
+const incidentSchema = new mongoose.Schema(
+  {
+    title: String,
+    description: String,
+    dept: String, // Power/Water/Roads/Drainage
+    priority: String, // Critical/High/Medium/Low
+    status: { type: String, default: "Open" }, // Open/In Progress/On Hold/Resolved
+    locationText: String,
+    coords: { lat: Number, lng: Number },
 
-// PUBLIC
-router.post("/register", registerUser);
-router.post("/login", loginUser);
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
 
-// PROTECTED
-router.get("/me", verifyJWT, getCurrentUser);
+    updates: [
+      {
+        status: String,
+        notes: String,
+        updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        updatedAt: Date,
+      },
+    ],
+  },
+  { timestamps: true },
+);
 
-export default router;
+export default mongoose.model("Incident", incidentSchema);
