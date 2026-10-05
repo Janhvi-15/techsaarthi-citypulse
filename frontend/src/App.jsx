@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
-import Roleselect from "./pages/Roleselect";
-import AuthPage from "./pages/AuthPage";
+import RoleSelect from "./pages/RoleSelect";
 import Dashboard from "./pages/Dashboard";
 import CitizenFront from "./pages/CitizenFront";
 import ReportIncident from "./pages/ReportIncident";
@@ -17,8 +16,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/roles" element={<Roleselect />} />
-        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/roles" element={<RoleSelect />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/citizen" element={<CitizenFront />} />
         <Route path="/citizen/report" element={<ReportIncident />} />
