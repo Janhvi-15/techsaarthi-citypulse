@@ -40,6 +40,8 @@ function App() {
 
         <Route path="/user/login" element={<UserLogin />} />
         <Route path="/user/register" element={<UserRegister />} />
+        <Route path="/login" element={<UserLogin />} />
+        <Route path="/register" element={<UserRegister />} />
 
         <Route path="/staff/login" element={<StaffLogin />} />
         <Route path="/staff/register" element={<StaffRegister />} />
