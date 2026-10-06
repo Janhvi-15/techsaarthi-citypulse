@@ -40,6 +40,7 @@ function App() {
         {/* ==================== CITIZEN ==================== */}
         <Route path="/citizen" element={<CitizenFront />} />
         <Route path="/citizen/report" element={<ReportIncident />} />
+        <Route path="/report-incident" element={<ReportIncident />} />
         <Route path="/citizen/map" element={<MapView />} />
         <Route path="/citizen/post" element={<Post />} />
 
