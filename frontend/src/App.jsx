@@ -6,6 +6,7 @@ import RoleSelect from "./pages/RoleSelect";
 import Dashboard from "./pages/Dashboard";
 import Dashboard2 from "./pages/Dashboard2";
 import Dashboard3 from "./pages/Dashboard3";
+import StaffDashboard from "./pages/staff/StaffDashboard";
 
 import CitizenFront from "./pages/CitizenFront";
 import ReportIncident from "./pages/ReportIncident";
@@ -55,6 +56,7 @@ function App() {
         <Route path="/staff/login" element={<StaffLogin />} />
         <Route path="/staff/register" element={<StaffRegister />} />
         <Route path="/fieldstaff" element={<FieldStaff />} />
+        <Route path="/staff/dashboard" element={<StaffDashboard />} />
 
         {/* ==================== ADMIN ==================== */}
         <Route path="/admin" element={<AdminFront />} />
