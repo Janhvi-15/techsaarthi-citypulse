@@ -1,8 +1,10 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const Navbar1 = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
   const isActive = (path) =>
     location.pathname === path
@@ -48,7 +50,7 @@ const Navbar1 = () => {
         {/* User pill */}
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl border bg-white">
           <span className="text-gray-600">👤</span>
-          <span className="text-sm font-medium">janhvi</span>
+          <span className="text-sm font-medium">{user?.name || "User"}</span>
           <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
             Citizen
           </span>
